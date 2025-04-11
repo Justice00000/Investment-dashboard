@@ -73,7 +73,7 @@
                             type="number" 
                             id="account-balance" 
                             class="w-full bg-gray-700 text-white p-3 rounded-lg" 
-                            value="25000.00"
+                            value="6060.00"
                             step="0.01"
                         >
                     </div>
@@ -192,219 +192,101 @@
                 </div>
             </div>
 
-            <div class="flex justify-between">
-                <div id="debug-status" class="text-green-400"></div>
-                <div class="flex space-x-4">
-                    <button 
-                        id="save-changes" 
-                        class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition"
-                    >
-                        Save Changes
-                    </button>
-                    <button 
-                        id="notify-user" 
-                        class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition"
-                    >
-                        Notify User
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Debug panel -->
-            <div class="mt-8 p-4 bg-gray-700 rounded-lg" id="debug-panel">
-                <h3 class="text-lg font-bold mb-2">Debug Panel</h3>
-                <div id="debug-output" class="bg-gray-800 p-3 rounded-lg text-sm font-mono max-h-40 overflow-y-auto">
-                    Waiting for actions...
-                </div>
+            <div class="flex justify-end space-x-4">
+                <button 
+                    id="save-changes" 
+                    class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition"
+                >
+                    Save Changes
+                </button>
+                <button 
+                    id="notify-user" 
+                    class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition"
+                >
+                    Notify User
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Firebase modules -->
-    <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-        
-        // Your Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCWuFq3ZYhLdjVrKKa7RH2_T_f1Ct4rtIY",
-            authDomain: "invest-6c18d.firebaseapp.com",
-            projectId: "invest-6c18d",
-            storageBucket: "invest-6c18d.firebasestorage.app",
-            messagingSenderId: "401038787144",
-            appId: "1:401038787144:web:949e93e8ff282fdd294e7d",
-            measurementId: "G-GL5QZ99F5F"
-        };
-        
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        
-        // Helper function to add debug info
-        function addDebugInfo(message) {
-            const debugOutput = document.getElementById('debug-output');
-            const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.textContent = `[${timestamp}] ${message}`;
-            debugOutput.appendChild(logEntry);
-            
-            // Scroll to bottom
-            debugOutput.scrollTop = debugOutput.scrollHeight;
-            
-            // Log to console as well
-            console.log(`[${timestamp}] ${message}`);
-        }
-        
-        // Function to show status message
-        function showStatus(message, isSuccess = true) {
-            const statusElement = document.getElementById('debug-status');
-            statusElement.textContent = message;
-            statusElement.className = isSuccess ? 'text-green-400' : 'text-red-400';
-            
-            // Clear after 3 seconds
-            setTimeout(() => {
-                statusElement.textContent = '';
-            }, 3000);
-        }
-        
-        // Function to save dashboard data to Firestore
-        async function saveDashboardData() {
-            try {
-                addDebugInfo("Saving dashboard data to Firestore...");
-                
-                const dashboardData = {
-                    user: {
-                        id: document.getElementById('user-id').value,
-                        name: document.getElementById('user-name').value,
-                        email: document.getElementById('user-email').value
-                    },
-                    balances: {
-                        accountBalance: parseFloat(document.getElementById('account-balance').value),
-                        totalWithdraw: parseFloat(document.getElementById('total-withdraw').value),
-                        totalDeposit: parseFloat(document.getElementById('total-deposit').value),
-                        totalInvest: parseFloat(document.getElementById('total-invest').value)
-                    },
-                    plan: {
-                        name: document.getElementById('plan-name').value,
-                        roi: parseFloat(document.getElementById('roi-percentage').value),
-                        min: parseFloat(document.getElementById('plan-min').value),
-                        max: parseFloat(document.getElementById('plan-max').value),
-                        duration: document.getElementById('plan-duration').value
-                    },
-                    referral: {
-                        earnings: parseFloat(document.getElementById('referral-earnings').value)
-                    },
-                    lastUpdated: new Date().toISOString()
-                };
-                
-                // Use the user ID as the document ID in the "dashboards" collection
-                const userId = document.getElementById('user-id').value;
-                await setDoc(doc(db, "dashboards", userId), dashboardData);
-                
-                addDebugInfo("Data saved successfully to Firestore");
-                showStatus("Changes saved to database", true);
-                
-                return dashboardData;
-            } catch (error) {
-                addDebugInfo("ERROR saving data to Firestore: " + error.message);
-                showStatus("Error saving data", false);
-                throw error;
-            }
-        }
-        
-        // Function to load dashboard data from Firestore
-        async function loadDashboardData() {
-            try {
-                addDebugInfo("Loading dashboard data from Firestore...");
-                
-                const userId = document.getElementById('user-id').value;
-                const docRef = doc(db, "dashboards", userId);
-                const docSnap = await getDoc(docRef);
-                
-                if (docSnap.exists()) {
-                    const dashboardData = docSnap.data();
-                    addDebugInfo("Data loaded successfully from Firestore");
-                    
-                    // User data
-                    document.getElementById('user-name').value = dashboardData.user.name;
-                    document.getElementById('user-email').value = dashboardData.user.email;
-                    
-                    // Balance data
-                    document.getElementById('account-balance').value = dashboardData.balances.accountBalance.toFixed(2);
-                    document.getElementById('total-withdraw').value = dashboardData.balances.totalWithdraw.toFixed(2);
-                    document.getElementById('total-deposit').value = dashboardData.balances.totalDeposit.toFixed(2);
-                    document.getElementById('total-invest').value = dashboardData.balances.totalInvest.toFixed(2);
-                    
-                    // Plan data
-                    document.getElementById('plan-name').value = dashboardData.plan.name;
-                    document.getElementById('roi-percentage').value = dashboardData.plan.roi.toFixed(2);
-                    document.getElementById('plan-min').value = dashboardData.plan.min.toFixed(2);
-                    document.getElementById('plan-max').value = dashboardData.plan.max.toFixed(2);
-                    document.getElementById('plan-duration').value = dashboardData.plan.duration;
-                    
-                    // Referral data
-                    document.getElementById('referral-earnings').value = dashboardData.referral.earnings.toFixed(2);
-                } else {
-                    addDebugInfo("No data found in Firestore for this user");
-                    initializeDefaultData();
-                }
-            } catch (error) {
-                addDebugInfo("ERROR loading data from Firestore: " + error.message);
-                showStatus("Error loading data", false);
-            }
-        }
-        
-        // Initialize with default data
-        async function initializeDefaultData() {
-            addDebugInfo("Initializing with default data");
-            
-            const defaultData = {
+    <!-- Updated dashboard data storage -->
+    <script>
+        // Function to save dashboard data in local storage
+        function saveDashboardData() {
+            const dashboardData = {
                 user: {
-                    id: "USR123456",
-                    name: "Charles Crowther",
-                    email: "charlescrowther@example.com"
+                    id: document.getElementById('user-id').value,
+                    name: document.getElementById('user-name').value,
+                    email: document.getElementById('user-email').value
                 },
                 balances: {
-                    accountBalance: 25000.00,
-                    totalWithdraw: 0.00,
-                    totalDeposit: 0.00,
-                    totalInvest: 2500.00
+                    accountBalance: parseFloat(document.getElementById('account-balance').value),
+                    totalWithdraw: parseFloat(document.getElementById('total-withdraw').value),
+                    totalDeposit: parseFloat(document.getElementById('total-deposit').value),
+                    totalInvest: parseFloat(document.getElementById('total-invest').value)
                 },
                 plan: {
-                    name: "Gold Plan",
-                    roi: 20.00,
-                    min: 1000.00,
-                    max: 2500.00,
-                    duration: "weekly"
+                    name: document.getElementById('plan-name').value,
+                    roi: parseFloat(document.getElementById('roi-percentage').value),
+                    min: parseFloat(document.getElementById('plan-min').value),
+                    max: parseFloat(document.getElementById('plan-max').value),
+                    duration: document.getElementById('plan-duration').value
                 },
                 referral: {
-                    earnings: 0.00
-                },
-                lastUpdated: new Date().toISOString()
+                    earnings: parseFloat(document.getElementById('referral-earnings').value)
+                }
             };
             
-            try {
-                await setDoc(doc(db, "dashboards", "USR123456"), defaultData);
-                addDebugInfo("Default data initialized in Firestore");
-            } catch (error) {
-                addDebugInfo("ERROR initializing default data: " + error.message);
+            localStorage.setItem('dashboardData', JSON.stringify(dashboardData));
+            return dashboardData;
+        }
+
+        // Function to load dashboard data from local storage
+        function loadDashboardData() {
+            const data = localStorage.getItem('dashboardData');
+            if (data) {
+                const dashboardData = JSON.parse(data);
+                
+                // User data
+                document.getElementById('user-name').value = dashboardData.user.name;
+                document.getElementById('user-email').value = dashboardData.user.email;
+                
+                // Balance data
+                document.getElementById('account-balance').value = dashboardData.balances.accountBalance.toFixed(2);
+                document.getElementById('total-withdraw').value = dashboardData.balances.totalWithdraw.toFixed(2);
+                document.getElementById('total-deposit').value = dashboardData.balances.totalDeposit.toFixed(2);
+                document.getElementById('total-invest').value = dashboardData.balances.totalInvest.toFixed(2);
+                
+                // Plan data
+                document.getElementById('plan-name').value = dashboardData.plan.name;
+                document.getElementById('roi-percentage').value = dashboardData.plan.roi.toFixed(2);
+                document.getElementById('plan-min').value = dashboardData.plan.min.toFixed(2);
+                document.getElementById('plan-max').value = dashboardData.plan.max.toFixed(2);
+                document.getElementById('plan-duration').value = dashboardData.plan.duration;
+                
+                // Referral data
+                document.getElementById('referral-earnings').value = dashboardData.referral.earnings.toFixed(2);
             }
         }
+
+        // Save changes button
+        document.getElementById('save-changes').addEventListener('click', function() {
+            const data = saveDashboardData();
+            alert('Dashboard data has been updated successfully!');
+        });
 
         // Notify user button
         document.getElementById('notify-user').addEventListener('click', async function() {
-            try {
-                const data = await saveDashboardData();
-                const userName = document.getElementById('user-name').value;
-                const userEmail = document.getElementById('user-email').value;
+            const data = saveDashboardData();
+            const userName = document.getElementById('user-name').value;
+            const userEmail = document.getElementById('user-email').value;
 
+            try {
                 // Show loading state
                 const notifyButton = document.getElementById('notify-user');
                 const originalButtonText = notifyButton.textContent;
                 notifyButton.textContent = 'Sending...';
                 notifyButton.disabled = true;
-                addDebugInfo("Sending notification email to " + userEmail);
 
                 // Prepare message content
                 const templateParams = {
@@ -418,50 +300,27 @@
                     message: "Your account information has been updated. Please check your dashboard for the latest details."
                 };
 
-                try {
-                    // Send email using EmailJS
-                    await emailjs.send(
-                        'service_538bgur', 
-                        'template_zzwo3cj', 
-                        templateParams, 
-                        'g4dU-gdpiGoL3yIER'
-                    );
-                    
-                    addDebugInfo("Email notification sent successfully");
-                    showStatus(`Notification sent to ${userName}`, true);
-                } catch (emailError) {
-                    addDebugInfo("ERROR sending email: " + emailError.message);
-                    showStatus('Failed to send notification', false);
-                    alert('Failed to send notification. Please try again later.');
-                } finally {
-                    // Restore button state
-                    notifyButton.textContent = originalButtonText;
-                    notifyButton.disabled = false;
-                }
+                // Send email using EmailJS
+                await emailjs.send(
+                    'service_538bgur', 
+                    'template_zzwo3cj', 
+                    templateParams, 
+                    'g4dU-gdpiGoL3yIER'
+                );
+
+                alert(`Notification sent to ${userName} at ${userEmail}`);
             } catch (error) {
-                addDebugInfo("ERROR in notify button handler: " + error.message);
-                showStatus('Error processing notification', false);
+                console.error('Error:', error);
+                alert('Failed to send notification. Please try again later.');
+            } finally {
+                // Restore button state
+                notifyButton.textContent = originalButtonText;
+                notifyButton.disabled = false;
             }
         });
 
-        // Event listeners for input changes to show they're unsaved
-        const allInputs = document.querySelectorAll('input, select');
-        allInputs.forEach(input => {
-            input.addEventListener('change', function() {
-                showStatus('Unsaved changes', false);
-            });
-        });
-
-        // Save changes button
-        document.getElementById('save-changes').addEventListener('click', function() {
-            saveDashboardData();
-        });
-
         // Load data on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            addDebugInfo("Page loaded, initializing dashboard");
-            loadDashboardData();
-        });
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
     </script>
 </body>
 </html>
