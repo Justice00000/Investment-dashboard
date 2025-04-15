@@ -25,6 +25,38 @@
             </div>
         </div>
 
+        <!-- User Selection Section -->
+        <div class="max-w-4xl mx-auto bg-gray-800 rounded-xl shadow-2xl p-8 mb-8">
+            <h2 class="text-2xl font-bold mb-6 text-center">Select User</h2>
+            
+            <div class="flex items-center space-x-4 mb-4">
+                <select 
+                    id="user-selector" 
+                    class="flex-grow bg-gray-700 text-white p-3 rounded-lg"
+                >
+                    <option value="">Loading users...</option>
+                </select>
+                <button 
+                    id="load-user-data" 
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+                >
+                    Load User
+                </button>
+            </div>
+            
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-400">
+                    <span id="user-count">0</span> registered users found
+                </div>
+                <button 
+                    id="refresh-users" 
+                    class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm"
+                >
+                    Refresh List
+                </button>
+            </div>
+        </div>
+
         <div class="max-w-4xl mx-auto bg-gray-800 rounded-xl shadow-2xl p-8">
             <div class="mb-8">
                 <h2 class="text-2xl font-bold mb-6 text-center">User Information</h2>
@@ -224,7 +256,17 @@
     <script type="module">
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            collection, 
+            getDocs, 
+            query, 
+            where, 
+            orderBy 
+        } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
         
         // Your Firebase configuration
         const firebaseConfig = {
@@ -268,6 +310,91 @@
             }, 3000);
         }
         
+        // Function to fetch all users from Firestore
+        async function fetchAllUsers() {
+            try {
+                addDebugInfo("Fetching all registered users...");
+                
+                // Get all documents from the "users" collection
+                // If your users are in a different collection, change "users" to your collection name
+                const usersQuery = query(collection(db, "users"), orderBy("userId"));
+                const usersSnapshot = await getDocs(usersQuery);
+                
+                // If users collection is empty, try looking for dashboards
+                if (usersSnapshot.empty) {
+                    addDebugInfo("No users found in 'users' collection, trying 'dashboards' collection...");
+                    const dashboardsQuery = query(collection(db, "dashboards"), orderBy("fullName"));
+                    const dashboardsSnapshot = await getDocs(dashboardsQuery);
+                    
+                    if (dashboardsSnapshot.empty) {
+                        addDebugInfo("No users found in either collection");
+                        return [];
+                    }
+                    
+                    const dashboardUsers = [];
+                    dashboardsSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        dashboardUsers.push({
+                            id: doc.id,
+                            name: data.user?.name || "Unknown User",
+                            email: data.user?.email || "unknown@example.com"
+                        });
+                    });
+                    
+                    addDebugInfo(`Found ${dashboardUsers.length} users in 'dashboards' collection`);
+                    return dashboardUsers;
+                }
+                
+                // Process users from users collection
+                const usersList = [];
+                usersSnapshot.forEach(doc => {
+                    const userData = doc.data();
+                    usersList.push({
+                        id: doc.id,
+                        name: userData.name || "Unknown User",
+                        email: userData.email || "unknown@example.com"
+                    });
+                });
+                
+                addDebugInfo(`Found ${usersList.length} users in 'users' collection`);
+                return usersList;
+            } catch (error) {
+                addDebugInfo("ERROR fetching users: " + error.message);
+                showStatus("Error loading users", false);
+                return [];
+            }
+        }
+        
+        // Function to populate user dropdown
+        async function populateUserDropdown() {
+            try {
+                const userSelector = document.getElementById('user-selector');
+                userSelector.innerHTML = '<option value="">Loading users...</option>';
+                
+                const users = await fetchAllUsers();
+                document.getElementById('user-count').textContent = users.length;
+                
+                if (users.length === 0) {
+                    userSelector.innerHTML = '<option value="">No users found</option>';
+                    return;
+                }
+                
+                userSelector.innerHTML = '<option value="">Select a user...</option>';
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.name} (${user.email})`;
+                    option.dataset.email = user.email;
+                    userSelector.appendChild(option);
+                });
+                
+                addDebugInfo("User dropdown populated successfully");
+            } catch (error) {
+                addDebugInfo("ERROR populating user dropdown: " + error.message);
+                showStatus("Error loading user list", false);
+            }
+        }
+        
         // Function to save dashboard data to Firestore
         async function saveDashboardData() {
             try {
@@ -275,9 +402,9 @@
                 
                 const dashboardData = {
                     user: {
-                        id: document.getElementById('user-id').value,
-                        name: document.getElementById('user-name').value,
-                        email: document.getElementById('user-email').value
+                        id: document.getElementById('userId').value,
+                        name: document.getElementById('fullName').value,
+                        email: document.getElementById('email').value
                     },
                     balances: {
                         accountBalance: parseFloat(document.getElementById('account-balance').value),
@@ -314,11 +441,10 @@
         }
         
         // Function to load dashboard data from Firestore
-        async function loadDashboardData() {
+        async function loadDashboardData(userId) {
             try {
-                addDebugInfo("Loading dashboard data from Firestore...");
+                addDebugInfo(`Loading dashboard data for user ID: ${userId}...`);
                 
-                const userId = document.getElementById('user-id').value;
                 const docRef = doc(db, "dashboards", userId);
                 const docSnap = await getDoc(docRef);
                 
@@ -327,70 +453,185 @@
                     addDebugInfo("Data loaded successfully from Firestore");
                     
                     // User data
-                    document.getElementById('user-name').value = dashboardData.user.name;
-                    document.getElementById('user-email').value = dashboardData.user.email;
+                    document.getElementById('user-id').value = userId;
+                    document.getElementById('user-name').value = dashboardData.user?.name || "Unknown User";
+                    document.getElementById('user-email').value = dashboardData.user?.email || "unknown@example.com";
                     
                     // Balance data
-                    document.getElementById('account-balance').value = dashboardData.balances.accountBalance.toFixed(2);
-                    document.getElementById('total-withdraw').value = dashboardData.balances.totalWithdraw.toFixed(2);
-                    document.getElementById('total-deposit').value = dashboardData.balances.totalDeposit.toFixed(2);
-                    document.getElementById('total-invest').value = dashboardData.balances.totalInvest.toFixed(2);
+                    document.getElementById('account-balance').value = 
+                        (dashboardData.balances?.accountBalance ?? 0).toFixed(2);
+                    document.getElementById('total-withdraw').value = 
+                        (dashboardData.balances?.totalWithdraw ?? 0).toFixed(2);
+                    document.getElementById('total-deposit').value = 
+                        (dashboardData.balances?.totalDeposit ?? 0).toFixed(2);
+                    document.getElementById('total-invest').value = 
+                        (dashboardData.balances?.totalInvest ?? 0).toFixed(2);
                     
                     // Plan data
-                    document.getElementById('plan-name').value = dashboardData.plan.name;
-                    document.getElementById('roi-percentage').value = dashboardData.plan.roi.toFixed(2);
-                    document.getElementById('plan-min').value = dashboardData.plan.min.toFixed(2);
-                    document.getElementById('plan-max').value = dashboardData.plan.max.toFixed(2);
-                    document.getElementById('plan-duration').value = dashboardData.plan.duration;
+                    document.getElementById('plan-name').value = 
+                        dashboardData.plan?.name || "Default Plan";
+                    document.getElementById('roi-percentage').value = 
+                        (dashboardData.plan?.roi ?? 0).toFixed(2);
+                    document.getElementById('plan-min').value = 
+                        (dashboardData.plan?.min ?? 0).toFixed(2);
+                    document.getElementById('plan-max').value = 
+                        (dashboardData.plan?.max ?? 0).toFixed(2);
+                    document.getElementById('plan-duration').value = 
+                        dashboardData.plan?.duration || "weekly";
                     
                     // Referral data
-                    document.getElementById('referral-earnings').value = dashboardData.referral.earnings.toFixed(2);
+                    document.getElementById('referral-earnings').value = 
+                        (dashboardData.referral?.earnings ?? 0).toFixed(2);
+                    
+                    showStatus(`User data loaded: ${document.getElementById('user-name').value}`, true);
+                    return true;
                 } else {
-                    addDebugInfo("No data found in Firestore for this user");
-                    initializeDefaultData();
+                    addDebugInfo("No dashboard data found for this user. Creating new dashboard...");
+                    
+                    // Try to get basic user info from users collection
+                    const userRef = doc(db, "users", userId);
+                    const userSnap = await getDoc(userRef);
+                    
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        
+                        // Set basic user data from users collection
+                        document.getElementById('userId').value = userId;
+                        document.getElementById('fullName').value = userData.name || "New User";
+                        document.getElementById('email').value = userData.email || "user@example.com";
+                        
+                        // Set default values for other fields
+                        document.getElementById('accountBalance').value = "0.00";
+                        document.getElementById('total-withdraw').value = "0.00";
+                        document.getElementById('total-deposit').value = "0.00";
+                        document.getElementById('total-invest').value = "0.00";
+                        document.getElementById('plan-name').value = "Default Plan";
+                        document.getElementById('roi-percentage').value = "10.00";
+                        document.getElementById('plan-min').value = "100.00";
+                        document.getElementById('plan-max').value = "1000.00";
+                        document.getElementById('plan-duration').value = "weekly";
+                        document.getElementById('referral-earnings').value = "0.00";
+                        
+                        addDebugInfo("Created new dashboard with user details from users collection");
+                        showStatus("New dashboard created for user", true);
+                        return true;
+                    } else {
+                        // If we can't find any information about this user
+                        addDebugInfo("No user information found in any collection");
+                        showStatus("No user data found", false);
+                        return false;
+                    }
                 }
             } catch (error) {
                 addDebugInfo("ERROR loading data from Firestore: " + error.message);
-                showStatus("Error loading data", false);
+                showStatus("Error loading user data", false);
+                return false;
             }
         }
         
-        // Initialize with default data
+        // Initialize with default data for demo purposes
         async function initializeDefaultData() {
             addDebugInfo("Initializing with default data");
             
-            const defaultData = {
-                user: {
-                    id: "USR123456",
-                    name: "Charles Crowther",
-                    email: "charlescrowther@example.com"
-                },
-                balances: {
-                    accountBalance: 25000.00,
-                    totalWithdraw: 0.00,
-                    totalDeposit: 0.00,
-                    totalInvest: 2500.00
-                },
-                plan: {
-                    name: "Gold Plan",
-                    roi: 20.00,
-                    min: 1000.00,
-                    max: 2500.00,
-                    duration: "weekly"
-                },
-                referral: {
-                    earnings: 0.00
-                },
-                lastUpdated: new Date().toISOString()
-            };
+            // const defaultData = {
+            //     user: {
+            //         id: "USR123456",
+            //         name: "Charles Crowther",
+            //         email: "charlescrowther@example.com"
+            //     },
+            //     balances: {
+            //         accountBalance: 25000.00,
+            //         totalWithdraw: 0.00,
+            //         totalDeposit: 0.00,
+            //         totalInvest: 2500.00
+            //     },
+            //     plan: {
+            //         name: "Gold Plan",
+            //         roi: 20.00,
+            //         min: 1000.00,
+            //         max: 2500.00,
+            //         duration: "weekly"
+            //     },
+            //     referral: {
+            //         earnings: 0.00
+            //     },
+            //     lastUpdated: new Date().toISOString()
+            // };
             
-            try {
-                await setDoc(doc(db, "dashboards", "USR123456"), defaultData);
-                addDebugInfo("Default data initialized in Firestore");
+            // try {
+            //     await setDoc(doc(db, "dashboards", "USR123456"), defaultData);
+            //     addDebugInfo("Default data initialized in Firestore");
+                
+                // Also create a second user for demo purposes
+                // const secondUserData = {
+                //     user: {
+                //         id: "USR789012",
+                //         name: "Jane Smith",
+                //         email: "janesmith@example.com"
+                //     },
+                //     balances: {
+                //         accountBalance: 15000.00,
+                //         totalWithdraw: 500.00,
+                //         totalDeposit: 2000.00,
+                //         totalInvest: 1500.00
+                //     },
+                //     plan: {
+                //         name: "Silver Plan",
+                //         roi: 15.00,
+                //         min: 500.00,
+                //         max: 1500.00,
+                //         duration: "biweekly"
+                //     },
+                //     referral: {
+                //         earnings: 100.00
+                //     },
+                //     lastUpdated: new Date().toISOString()
+                // };
+                
+                // await setDoc(doc(db, "dashboards", "USR789012"), secondUserData);
+                // addDebugInfo("Second demo user initialized in Firestore");
+                
+                // Refresh the user dropdown
+                await populateUserDropdown();
+                
+                // Load the first user data
+                await loadDashboardData("USR123456");
             } catch (error) {
                 addDebugInfo("ERROR initializing default data: " + error.message);
             }
         }
+
+        // Handle user selection and loading
+        document.getElementById('load-user-data').addEventListener('click', async function() {
+            const userSelector = document.getElementById('user-selector');
+            const selectedUserId = userSelector.value;
+            
+            if (!selectedUserId) {
+                showStatus("Please select a user first", false);
+                return;
+            }
+            
+            const success = await loadDashboardData(selectedUserId);
+            if (success) {
+                addDebugInfo(`Successfully loaded data for user ID: ${selectedUserId}`);
+            } else {
+                addDebugInfo(`Failed to load data for user ID: ${selectedUserId}`);
+            }
+        });
+        
+        // Handle user dropdown change
+        document.getElementById('user-selector').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                addDebugInfo(`User selected: ${selectedOption.textContent}`);
+            }
+        });
+        
+        // Refresh user list button
+        document.getElementById('refresh-users').addEventListener('click', async function() {
+            addDebugInfo("Refreshing user list...");
+            await populateUserDropdown();
+        });
 
         // Notify user button
         document.getElementById('notify-user').addEventListener('click', async function() {
@@ -457,10 +698,32 @@
             saveDashboardData();
         });
 
-        // Load data on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async function() {
             addDebugInfo("Page loaded, initializing dashboard");
-            loadDashboardData();
+            
+            // First, try to populate the user dropdown
+            await populateUserDropdown();
+            
+            // Check if we found any users
+            const userCount = parseInt(document.getElementById('user-count').textContent);
+            
+            if (userCount === 0) {
+                // If no users found, initialize with default data
+                addDebugInfo("No users found, creating demo data...");
+                await initializeDefaultData();
+            } else {
+                // Otherwise, load the first user in the list
+                addDebugInfo("Loading first user from the list...");
+                const userSelector = document.getElementById('user-selector');
+                if (userSelector.options.length > 1) {
+                    userSelector.selectedIndex = 1; // First actual user (index 0 is "Select a user...")
+                    const selectedUserId = userSelector.value;
+                    if (selectedUserId) {
+                        await loadDashboardData(selectedUserId);
+                    }
+                }
+            }
         });
     </script>
 </body>
