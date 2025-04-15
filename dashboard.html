@@ -66,7 +66,7 @@
                         <label class="block text-sm font-medium text-gray-300 mb-2">User ID</label>
                         <input 
                             type="text" 
-                            id="user-id"
+                            id="user-id" 
                             class="w-full bg-gray-700 text-white p-3 rounded-lg" 
                             value="USR123456"
                             readonly
@@ -114,7 +114,7 @@
                         <label class="block text-sm font-medium text-gray-300 mb-2">Total Withdraw (USD)</label>
                         <input 
                             type="number" 
-                            id="total-display" 
+                            id="total-withdraw" 
                             class="w-full bg-gray-700 text-white p-3 rounded-lg" 
                             value="0.00"
                             step="0.01"
@@ -136,7 +136,7 @@
                         <label class="block text-sm font-medium text-gray-300 mb-2">Total Invest (USD)</label>
                         <input 
                             type="number" 
-                            id="investment-total"
+                            id="total-invest" 
                             class="w-full bg-gray-700 text-white p-3 rounded-lg" 
                             value="2500.00"
                             step="0.01"
@@ -216,7 +216,7 @@
                     <label class="block text-sm font-medium text-gray-300 mb-2">Referral Earnings (USD)</label>
                     <input 
                         type="number" 
-                        id="total-referral" 
+                        id="referral-earnings" 
                         class="w-full bg-gray-700 text-white p-3 rounded-lg" 
                         value="0.00"
                         step="0.01"
@@ -302,7 +302,7 @@
             snapshot.forEach((docSnap) => {
               const data = docSnap.data();
               users.push({
-                id: docSnap.id, // use doc ID
+                id: data.userId || docSnap.id,
                 fullName: data.fullName || "Unknown",
                 email: data.email || "unknown@example.com"
               });
@@ -349,9 +349,7 @@
       
             const data = docSnap.data();
       
-            // ✅ FIXED: Set hidden user-id input using document ID
-            document.getElementById("user-id").value = userId;
-      
+            document.getElementById("user-id").value = data.userId || "";
             document.getElementById("full-name").value = data.fullName || "";
             document.getElementById("email").value = data.email || "";
       
@@ -462,6 +460,6 @@
             await loadUserData(dropdown.value);
           }
         });
-      </script>                  
+      </script>            
 </body>
 </html>
