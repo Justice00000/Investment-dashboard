@@ -563,43 +563,43 @@
             //     addDebugInfo("Default data initialized in Firestore");
                 
                 // Also create a second user for demo purposes
-                // const secondUserData = {
-                //     user: {
-                //         id: "USR789012",
-                //         name: "Jane Smith",
-                //         email: "janesmith@example.com"
-                //     },
-                //     balances: {
-                //         accountBalance: 15000.00,
-                //         totalWithdraw: 500.00,
-                //         totalDeposit: 2000.00,
-                //         totalInvest: 1500.00
-                //     },
-                //     plan: {
-                //         name: "Silver Plan",
-                //         roi: 15.00,
-                //         min: 500.00,
-                //         max: 1500.00,
-                //         duration: "biweekly"
-                //     },
-                //     referral: {
-                //         earnings: 100.00
-                //     },
-                //     lastUpdated: new Date().toISOString()
-                // };
+        //         const secondUserData = {
+        //             user: {
+        //                 id: "USR789012",
+        //                 name: "Jane Smith",
+        //                 email: "janesmith@example.com"
+        //             },
+        //             balances: {
+        //                 accountBalance: 15000.00,
+        //                 totalWithdraw: 500.00,
+        //                 totalDeposit: 2000.00,
+        //                 totalInvest: 1500.00
+        //             },
+        //             plan: {
+        //                 name: "Silver Plan",
+        //                 roi: 15.00,
+        //                 min: 500.00,
+        //                 max: 1500.00,
+        //                 duration: "biweekly"
+        //             },
+        //             referral: {
+        //                 earnings: 100.00
+        //             },
+        //             lastUpdated: new Date().toISOString()
+        //         };
                 
-                // await setDoc(doc(db, "dashboards", "USR789012"), secondUserData);
-                // addDebugInfo("Second demo user initialized in Firestore");
+        //         await setDoc(doc(db, "dashboards", "USR789012"), secondUserData);
+        //         addDebugInfo("Second demo user initialized in Firestore");
                 
-                // Refresh the user dropdown
-                await populateUserDropdown();
+        //         // Refresh the user dropdown
+        //         await populateUserDropdown();
                 
-                // Load the first user data
-                await loadDashboardData("USR123456");
-            } catch (error) {
-                addDebugInfo("ERROR initializing default data: " + error.message);
-            }
-        }
+        //         // Load the first user data
+        //         await loadDashboardData("USR123456");
+        //     } catch (error) {
+        //         addDebugInfo("ERROR initializing default data: " + error.message);
+        //     }
+        // }
 
         // Handle user selection and loading
         document.getElementById('load-user-data').addEventListener('click', async function() {
@@ -724,7 +724,9 @@
                     }
                 }
             }
+            
         });
+    }
     </script>
 </body>
 </html>
